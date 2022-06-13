@@ -1,0 +1,22 @@
+[package]
+name = "norm_bench"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+
+[dev-dependencies]
+icu_testdata = { version = "0.6", path = "../icu4x/provider/testdata" }
+icu_normalizer = { path = "../icu4x/experimental/normalizer", features = ["serde"] }
+rust_icu_ustring = "2.0.3"
+rust_icu_unorm2 = "2.0.3"
+unic-normal = "0.9.0"
+unicode-normalization = "0.1.19"
+detone = "1.0.0"
+criterion = "0.3"
+
+[[bench]]
+name = "norm"
+harness = false

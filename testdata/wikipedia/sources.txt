@@ -1,0 +1,10 @@
+el: https://el.wikipedia.org/w/index.php?title=%CE%86%CF%81%CE%B7%CF%82_(%CF%80%CE%BB%CE%B1%CE%BD%CE%AE%CF%84%CE%B7%CF%82)&oldid=6080112
+en: https://en.wikipedia.org/w/index.php?title=Mars&oldid=745952583
+fr: https://fr.wikipedia.org/w/index.php?title=Mars_(plan%C3%A8te)&oldid=131105854
+ja: https://ja.wikipedia.org/w/index.php?title=%E7%81%AB%E6%98%9F&oldid=61095795
+kn: https://kn.wikipedia.org/w/index.php?title=%E0%B2%AE%E0%B2%82%E0%B2%97%E0%B2%B3_(%E0%B2%97%E0%B3%8D%E0%B2%B0%E0%B2%B9)&oldid=1064751
+ko: https://ko.wikipedia.org/w/index.php?title=%ED%99%94%EC%84%B1&oldid=17394891
+vi: https://vi.wikipedia.org/w/index.php?title=Sao_H%E1%BB%8Fa&oldid=24192627
+zh: https://zh.wikipedia.org/w/index.php?title=%E7%81%AB%E6%98%9F&variant=zh-tw&oldid=41736649
+
+# The characters 无 and ／ have been removed from zh, because the file was previously used with glibc, which can't deal with those.
