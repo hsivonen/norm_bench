@@ -15,13 +15,15 @@ fn slice_from_icu4c(string: &UChar) -> &[u16] {
     unsafe { core::slice::from_raw_parts(string.as_c_ptr(), string.len()) }
 }
 
+const UTF16_BUFFER_SIZE: usize = 200*1024;
+
 fn bench_lang(name: &str, data: &str, c: &mut Criterion) {
     let data_provider = icu_testdata::get_provider();
 
-    let nfd_norm_icu4x = DecomposingNormalizer::try_new_nfd(&data_provider).unwrap();
-    let nfkd_norm_icu4x = DecomposingNormalizer::try_new_nfkd(&data_provider).unwrap();
-    let nfc_norm_icu4x = ComposingNormalizer::try_new_nfc(&data_provider).unwrap();
-    let nfkc_norm_icu4x = ComposingNormalizer::try_new_nfkc(&data_provider).unwrap();
+    let nfd_norm_icu4x = DecomposingNormalizer::try_new_nfd_unstable(&data_provider).unwrap();
+    let nfkd_norm_icu4x = DecomposingNormalizer::try_new_nfkd_unstable(&data_provider).unwrap();
+    let nfc_norm_icu4x = ComposingNormalizer::try_new_nfc_unstable(&data_provider).unwrap();
+    let nfkc_norm_icu4x = ComposingNormalizer::try_new_nfkc_unstable(&data_provider).unwrap();
 
     let nfd_icu4x = nfd_norm_icu4x.normalize(data);
     let nfkd_icu4x = nfkd_norm_icu4x.normalize(data);
@@ -77,166 +79,169 @@ fn bench_lang(name: &str, data: &str, c: &mut Criterion) {
     assert_eq!(nfc_icu4x, nfc_rs);
     assert_eq!(nfkc_icu4x, nfkc_rs);
 
-    {
-        let mut group_name = name.to_string();
-        group_name.push_str("_nfc_to_nfc_str");
+    let mut icu4c_utf16 = [0u16; UTF16_BUFFER_SIZE];
+    let mut icu4x_utf16 = arrayvec::ArrayVec::<u16, UTF16_BUFFER_SIZE>::new();
 
-        let mut group = c.benchmark_group(&group_name);
-        group.throughput(Throughput::Bytes(nfc_icu4x.len() as u64));
-        group.bench_function("icu4x", |b| b.iter(|| {
-            let normalized = nfc_norm_icu4x.normalize(black_box(nfc_icu4x.as_str()));
-            black_box(normalized);
-        }));
-        group.bench_function("unic", |b| b.iter(|| {
-            let normalized = StrNormalForm::nfc(black_box(nfc_icu4x.as_str())).collect::<String>();
-            black_box(normalized);
-        }));
-        group.bench_function("rs", |b| b.iter(|| {
-            let normalized = StrNormalForm::nfc(black_box(nfc_icu4x.as_str())).collect::<String>();
-            black_box(normalized);
-        }));
-        group.finish();
-    }
-    {
-        let mut group_name = name.to_string();
-        group_name.push_str("_nfc_to_nfd_str");
+    // {
+    //     let mut group_name = name.to_string();
+    //     group_name.push_str("_nfc_to_nfc_str");
 
-        let mut group = c.benchmark_group(&group_name);
-        group.throughput(Throughput::Bytes(nfc_icu4x.len() as u64));
-        group.bench_function("icu4x", |b| b.iter(|| {
-            let normalized = nfd_norm_icu4x.normalize(black_box(nfc_icu4x.as_str()));
-            black_box(normalized);
-        }));
-        group.bench_function("unic", |b| b.iter(|| {
-            let normalized = StrNormalForm::nfd(black_box(nfc_icu4x.as_str())).collect::<String>();
-            black_box(normalized);
-        }));
-        group.bench_function("rs", |b| b.iter(|| {
-            let normalized = StrNormalForm::nfd(black_box(nfc_icu4x.as_str())).collect::<String>();
-            black_box(normalized);
-        }));
-        group.finish();
-    }
-    {
-        let mut group_name = name.to_string();
-        group_name.push_str("_nfd_to_nfd_str");
+    //     let mut group = c.benchmark_group(&group_name);
+    //     group.throughput(Throughput::Bytes(nfc_icu4x.len() as u64));
+    //     group.bench_function("icu4x", |b| b.iter(|| {
+    //         let normalized = nfc_norm_icu4x.normalize(black_box(nfc_icu4x.as_str()));
+    //         black_box(normalized);
+    //     }));
+    //     group.bench_function("unic", |b| b.iter(|| {
+    //         let normalized = StrNormalForm::nfc(black_box(nfc_icu4x.as_str())).collect::<String>();
+    //         black_box(normalized);
+    //     }));
+    //     group.bench_function("rs", |b| b.iter(|| {
+    //         let normalized = StrNormalForm::nfc(black_box(nfc_icu4x.as_str())).collect::<String>();
+    //         black_box(normalized);
+    //     }));
+    //     group.finish();
+    // }
+    // {
+    //     let mut group_name = name.to_string();
+    //     group_name.push_str("_nfc_to_nfd_str");
 
-        let mut group = c.benchmark_group(&group_name);
-        group.throughput(Throughput::Bytes(nfd_icu4x.len() as u64));
-        group.bench_function("icu4x", |b| b.iter(|| {
-            let normalized = nfd_norm_icu4x.normalize(black_box(nfd_icu4x.as_str()));
-            black_box(normalized);
-        }));
-        group.bench_function("unic", |b| b.iter(|| {
-            let normalized = StrNormalForm::nfd(black_box(nfd_icu4x.as_str())).collect::<String>();
-            black_box(normalized);
-        }));
-        group.bench_function("rs", |b| b.iter(|| {
-            let normalized = StrNormalForm::nfd(black_box(nfd_icu4x.as_str())).collect::<String>();
-            black_box(normalized);
-        }));
-        group.finish();
-    }
-    {
-        let mut group_name = name.to_string();
-        group_name.push_str("_nfd_to_nfc_str");
+    //     let mut group = c.benchmark_group(&group_name);
+    //     group.throughput(Throughput::Bytes(nfc_icu4x.len() as u64));
+    //     group.bench_function("icu4x", |b| b.iter(|| {
+    //         let normalized = nfd_norm_icu4x.normalize(black_box(nfc_icu4x.as_str()));
+    //         black_box(normalized);
+    //     }));
+    //     group.bench_function("unic", |b| b.iter(|| {
+    //         let normalized = StrNormalForm::nfd(black_box(nfc_icu4x.as_str())).collect::<String>();
+    //         black_box(normalized);
+    //     }));
+    //     group.bench_function("rs", |b| b.iter(|| {
+    //         let normalized = StrNormalForm::nfd(black_box(nfc_icu4x.as_str())).collect::<String>();
+    //         black_box(normalized);
+    //     }));
+    //     group.finish();
+    // }
+    // {
+    //     let mut group_name = name.to_string();
+    //     group_name.push_str("_nfd_to_nfd_str");
 
-        let mut group = c.benchmark_group(&group_name);
-        group.throughput(Throughput::Bytes(nfd_icu4x.len() as u64));
-        group.bench_function("icu4x", |b| b.iter(|| {
-            let normalized = nfc_norm_icu4x.normalize(black_box(nfd_icu4x.as_str()));
-            black_box(normalized);
-        }));
-        group.bench_function("unic", |b| b.iter(|| {
-            let normalized = StrNormalForm::nfc(black_box(nfd_icu4x.as_str())).collect::<String>();
-            black_box(normalized);
-        }));
-        group.bench_function("rs", |b| b.iter(|| {
-            let normalized = StrNormalForm::nfc(black_box(nfd_icu4x.as_str())).collect::<String>();
-            black_box(normalized);
-        }));
-        group.finish();
-    }
-    {
-        let mut group_name = name.to_string();
-        group_name.push_str("_nfd_to_nfkc_str");
+    //     let mut group = c.benchmark_group(&group_name);
+    //     group.throughput(Throughput::Bytes(nfd_icu4x.len() as u64));
+    //     group.bench_function("icu4x", |b| b.iter(|| {
+    //         let normalized = nfd_norm_icu4x.normalize(black_box(nfd_icu4x.as_str()));
+    //         black_box(normalized);
+    //     }));
+    //     group.bench_function("unic", |b| b.iter(|| {
+    //         let normalized = StrNormalForm::nfd(black_box(nfd_icu4x.as_str())).collect::<String>();
+    //         black_box(normalized);
+    //     }));
+    //     group.bench_function("rs", |b| b.iter(|| {
+    //         let normalized = StrNormalForm::nfd(black_box(nfd_icu4x.as_str())).collect::<String>();
+    //         black_box(normalized);
+    //     }));
+    //     group.finish();
+    // }
+    // {
+    //     let mut group_name = name.to_string();
+    //     group_name.push_str("_nfd_to_nfc_str");
 
-        let mut group = c.benchmark_group(&group_name);
-        group.throughput(Throughput::Bytes(nfd_icu4x.len() as u64));
-        group.bench_function("icu4x", |b| b.iter(|| {
-            let normalized = nfkc_norm_icu4x.normalize(black_box(nfd_icu4x.as_str()));
-            black_box(normalized);
-        }));
-        group.bench_function("unic", |b| b.iter(|| {
-            let normalized = StrNormalForm::nfkc(black_box(nfd_icu4x.as_str())).collect::<String>();
-            black_box(normalized);
-        }));
-        group.bench_function("rs", |b| b.iter(|| {
-            let normalized = StrNormalForm::nfkc(black_box(nfd_icu4x.as_str())).collect::<String>();
-            black_box(normalized);
-        }));
-        group.finish();
-    }
-    {
-        let mut group_name = name.to_string();
-        group_name.push_str("_nfd_to_nfkd_str");
+    //     let mut group = c.benchmark_group(&group_name);
+    //     group.throughput(Throughput::Bytes(nfd_icu4x.len() as u64));
+    //     group.bench_function("icu4x", |b| b.iter(|| {
+    //         let normalized = nfc_norm_icu4x.normalize(black_box(nfd_icu4x.as_str()));
+    //         black_box(normalized);
+    //     }));
+        // group.bench_function("unic", |b| b.iter(|| {
+        //     let normalized = StrNormalForm::nfc(black_box(nfd_icu4x.as_str())).collect::<String>();
+        //     black_box(normalized);
+        // }));
+        // group.bench_function("rs", |b| b.iter(|| {
+        //     let normalized = StrNormalForm::nfc(black_box(nfd_icu4x.as_str())).collect::<String>();
+        //     black_box(normalized);
+        // }));
+    //     group.finish();
+    // }
+    // {
+    //     let mut group_name = name.to_string();
+    //     group_name.push_str("_nfd_to_nfkc_str");
 
-        let mut group = c.benchmark_group(&group_name);
-        group.throughput(Throughput::Bytes(nfd_icu4x.len() as u64));
-        group.bench_function("icu4x", |b| b.iter(|| {
-            let normalized = nfkd_norm_icu4x.normalize(black_box(nfd_icu4x.as_str()));
-            black_box(normalized);
-        }));
-        group.bench_function("unic", |b| b.iter(|| {
-            let normalized = StrNormalForm::nfkd(black_box(nfd_icu4x.as_str())).collect::<String>();
-            black_box(normalized);
-        }));
-        group.bench_function("rs", |b| b.iter(|| {
-            let normalized = StrNormalForm::nfkd(black_box(nfd_icu4x.as_str())).collect::<String>();
-            black_box(normalized);
-        }));
-        group.finish();
-    }
-    {
-        let mut group_name = name.to_string();
-        group_name.push_str("_nfc_to_nfkc_str");
+    //     let mut group = c.benchmark_group(&group_name);
+    //     group.throughput(Throughput::Bytes(nfd_icu4x.len() as u64));
+    //     group.bench_function("icu4x", |b| b.iter(|| {
+    //         let normalized = nfkc_norm_icu4x.normalize(black_box(nfd_icu4x.as_str()));
+    //         black_box(normalized);
+    //     }));
+    //     group.bench_function("unic", |b| b.iter(|| {
+    //         let normalized = StrNormalForm::nfkc(black_box(nfd_icu4x.as_str())).collect::<String>();
+    //         black_box(normalized);
+    //     }));
+    //     group.bench_function("rs", |b| b.iter(|| {
+    //         let normalized = StrNormalForm::nfkc(black_box(nfd_icu4x.as_str())).collect::<String>();
+    //         black_box(normalized);
+    //     }));
+    //     group.finish();
+    // }
+    // {
+    //     let mut group_name = name.to_string();
+    //     group_name.push_str("_nfd_to_nfkd_str");
 
-        let mut group = c.benchmark_group(&group_name);
-        group.throughput(Throughput::Bytes(nfc_icu4x.len() as u64));
-        group.bench_function("icu4x", |b| b.iter(|| {
-            let normalized = nfkc_norm_icu4x.normalize(black_box(nfc_icu4x.as_str()));
-            black_box(normalized);
-        }));
-        group.bench_function("unic", |b| b.iter(|| {
-            let normalized = StrNormalForm::nfkc(black_box(nfc_icu4x.as_str())).collect::<String>();
-            black_box(normalized);
-        }));
-        group.bench_function("rs", |b| b.iter(|| {
-            let normalized = StrNormalForm::nfkc(black_box(nfc_icu4x.as_str())).collect::<String>();
-            black_box(normalized);
-        }));
-        group.finish();
-    }
-    {
-        let mut group_name = name.to_string();
-        group_name.push_str("_nfc_to_nfkd_str");
+    //     let mut group = c.benchmark_group(&group_name);
+    //     group.throughput(Throughput::Bytes(nfd_icu4x.len() as u64));
+    //     group.bench_function("icu4x", |b| b.iter(|| {
+    //         let normalized = nfkd_norm_icu4x.normalize(black_box(nfd_icu4x.as_str()));
+    //         black_box(normalized);
+    //     }));
+    //     group.bench_function("unic", |b| b.iter(|| {
+    //         let normalized = StrNormalForm::nfkd(black_box(nfd_icu4x.as_str())).collect::<String>();
+    //         black_box(normalized);
+    //     }));
+    //     group.bench_function("rs", |b| b.iter(|| {
+    //         let normalized = StrNormalForm::nfkd(black_box(nfd_icu4x.as_str())).collect::<String>();
+    //         black_box(normalized);
+    //     }));
+    //     group.finish();
+    // }
+    // {
+    //     let mut group_name = name.to_string();
+    //     group_name.push_str("_nfc_to_nfkc_str");
 
-        let mut group = c.benchmark_group(&group_name);
-        group.throughput(Throughput::Bytes(nfc_icu4x.len() as u64));
-        group.bench_function("icu4x", |b| b.iter(|| {
-            let normalized = nfkd_norm_icu4x.normalize(black_box(nfc_icu4x.as_str()));
-            black_box(normalized);
-        }));
-        group.bench_function("unic", |b| b.iter(|| {
-            let normalized = StrNormalForm::nfkd(black_box(nfc_icu4x.as_str())).collect::<String>();
-            black_box(normalized);
-        }));
-        group.bench_function("rs", |b| b.iter(|| {
-            let normalized = StrNormalForm::nfkd(black_box(nfc_icu4x.as_str())).collect::<String>();
-            black_box(normalized);
-        }));
-        group.finish();
-    }
+    //     let mut group = c.benchmark_group(&group_name);
+    //     group.throughput(Throughput::Bytes(nfc_icu4x.len() as u64));
+    //     group.bench_function("icu4x", |b| b.iter(|| {
+    //         let normalized = nfkc_norm_icu4x.normalize(black_box(nfc_icu4x.as_str()));
+    //         black_box(normalized);
+    //     }));
+    //     group.bench_function("unic", |b| b.iter(|| {
+    //         let normalized = StrNormalForm::nfkc(black_box(nfc_icu4x.as_str())).collect::<String>();
+    //         black_box(normalized);
+    //     }));
+    //     group.bench_function("rs", |b| b.iter(|| {
+    //         let normalized = StrNormalForm::nfkc(black_box(nfc_icu4x.as_str())).collect::<String>();
+    //         black_box(normalized);
+    //     }));
+    //     group.finish();
+    // }
+    // {
+    //     let mut group_name = name.to_string();
+    //     group_name.push_str("_nfc_to_nfkd_str");
+
+    //     let mut group = c.benchmark_group(&group_name);
+    //     group.throughput(Throughput::Bytes(nfc_icu4x.len() as u64));
+    //     group.bench_function("icu4x", |b| b.iter(|| {
+    //         let normalized = nfkd_norm_icu4x.normalize(black_box(nfc_icu4x.as_str()));
+    //         black_box(normalized);
+    //     }));
+    //     group.bench_function("unic", |b| b.iter(|| {
+    //         let normalized = StrNormalForm::nfkd(black_box(nfc_icu4x.as_str())).collect::<String>();
+    //         black_box(normalized);
+    //     }));
+    //     group.bench_function("rs", |b| b.iter(|| {
+    //         let normalized = StrNormalForm::nfkd(black_box(nfc_icu4x.as_str())).collect::<String>();
+    //         black_box(normalized);
+    //     }));
+    //     group.finish();
+    // }
 
     {
         let mut group_name = name.to_string();
@@ -245,12 +250,13 @@ fn bench_lang(name: &str, data: &str, c: &mut Criterion) {
         let mut group = c.benchmark_group(&group_name);
         group.throughput(Throughput::Elements(nfc_utf16_icu4x.len() as u64));
         group.bench_function("icu4x", |b| b.iter(|| {
-            let normalized = nfc_norm_icu4x.normalize_utf16(black_box(nfc_utf16_icu4x.as_slice()));
-            black_box(normalized);
+            icu4x_utf16.clear();
+            nfc_norm_icu4x.normalize_utf16_to(black_box(nfc_utf16_icu4x.as_slice()), &mut icu4x_utf16).unwrap();
+            black_box(&icu4x_utf16);
         }));
         group.bench_function("icu4c", |b| b.iter(|| {
-            let normalized = nfc_norm_icu4c.normalize_ustring(black_box(&nfc_utf16_icu4c)).unwrap();
-            black_box(normalized);
+            let len = nfc_norm_icu4c.normalize_to(black_box(nfc_utf16_icu4x.as_slice()), &mut icu4c_utf16).unwrap();
+            black_box(len);
         }));
         group.finish();
     }
@@ -261,12 +267,13 @@ fn bench_lang(name: &str, data: &str, c: &mut Criterion) {
         let mut group = c.benchmark_group(&group_name);
         group.throughput(Throughput::Elements(nfc_utf16_icu4x.len() as u64));
         group.bench_function("icu4x", |b| b.iter(|| {
-            let normalized = nfd_norm_icu4x.normalize_utf16(black_box(nfc_utf16_icu4x.as_slice()));
-            black_box(normalized);
+            icu4x_utf16.clear();
+            nfd_norm_icu4x.normalize_utf16_to(black_box(nfc_utf16_icu4x.as_slice()), &mut icu4x_utf16).unwrap();
+            black_box(&icu4x_utf16);
         }));
         group.bench_function("icu4c", |b| b.iter(|| {
-            let normalized = nfd_norm_icu4c.normalize_ustring(black_box(&nfc_utf16_icu4c)).unwrap();
-            black_box(normalized);
+            let len = nfd_norm_icu4c.normalize_to(black_box(nfc_utf16_icu4x.as_slice()), &mut icu4c_utf16).unwrap();
+            black_box(len);
         }));
         group.finish();
     }
@@ -275,14 +282,15 @@ fn bench_lang(name: &str, data: &str, c: &mut Criterion) {
         group_name.push_str("_nfd_to_nfd_utf16");
 
         let mut group = c.benchmark_group(&group_name);
-        group.throughput(Throughput::Elements(nfd_utf16_icu4x.len() as u64));
+        group.throughput(Throughput::Elements(nfc_utf16_icu4x.len() as u64));
         group.bench_function("icu4x", |b| b.iter(|| {
-            let normalized = nfd_norm_icu4x.normalize_utf16(black_box(nfd_utf16_icu4x.as_slice()));
-            black_box(normalized);
+            icu4x_utf16.clear();
+            nfd_norm_icu4x.normalize_utf16_to(black_box(nfd_utf16_icu4x.as_slice()), &mut icu4x_utf16).unwrap();
+            black_box(&icu4x_utf16);
         }));
         group.bench_function("icu4c", |b| b.iter(|| {
-            let normalized = nfd_norm_icu4c.normalize_ustring(black_box(&nfd_utf16_icu4c)).unwrap();
-            black_box(normalized);
+            let len = nfd_norm_icu4c.normalize_to(black_box(nfd_utf16_icu4x.as_slice()), &mut icu4c_utf16).unwrap();
+            black_box(len);
         }));
         group.finish();
     }
@@ -293,12 +301,13 @@ fn bench_lang(name: &str, data: &str, c: &mut Criterion) {
         let mut group = c.benchmark_group(&group_name);
         group.throughput(Throughput::Elements(nfd_utf16_icu4x.len() as u64));
         group.bench_function("icu4x", |b| b.iter(|| {
-            let normalized = nfc_norm_icu4x.normalize_utf16(black_box(nfd_utf16_icu4x.as_slice()));
-            black_box(normalized);
+            icu4x_utf16.clear();
+            nfc_norm_icu4x.normalize_utf16_to(black_box(nfd_utf16_icu4x.as_slice()), &mut icu4x_utf16).unwrap();
+            black_box(&icu4x_utf16);
         }));
         group.bench_function("icu4c", |b| b.iter(|| {
-            let normalized = nfc_norm_icu4c.normalize_ustring(black_box(&nfd_utf16_icu4c)).unwrap();
-            black_box(normalized);
+            let len = nfc_norm_icu4c.normalize_to(black_box(nfd_utf16_icu4x.as_slice()), &mut icu4c_utf16).unwrap();
+            black_box(len);
         }));
         group.finish();
     }
@@ -313,67 +322,68 @@ fn bench_lang(name: &str, data: &str, c: &mut Criterion) {
 
         let orthographic_uchar: UChar = orthographic_utf16.clone().into();
 
-        {
-            let mut group = c.benchmark_group("vi_orthographic_to_nfc_str");
-            group.throughput(Throughput::Bytes(orthographic.len() as u64));
-            group.bench_function("icu4x", |b| b.iter(|| {
-                let normalized = nfc_norm_icu4x.normalize(black_box(orthographic.as_str()));
-                black_box(normalized);
-            }));
-            group.bench_function("unic", |b| b.iter(|| {
-                let normalized = StrNormalForm::nfc(black_box(orthographic.as_str())).collect::<String>();
-                black_box(normalized);
-            }));
-            group.bench_function("rs", |b| b.iter(|| {
-                let normalized = StrNormalForm::nfc(black_box(orthographic.as_str())).collect::<String>();
-                black_box(normalized);
-            }));
-            group.finish();
-        }
-        {
-            let mut group = c.benchmark_group("vi_orthographic_to_nfd_str");
-            group.throughput(Throughput::Bytes(orthographic.len() as u64));
-            group.bench_function("icu4x", |b| b.iter(|| {
-                let normalized = nfd_norm_icu4x.normalize(black_box(orthographic.as_str()));
-                black_box(normalized);
-            }));
-            group.bench_function("unic", |b| b.iter(|| {
-                let normalized = StrNormalForm::nfd(black_box(orthographic.as_str())).collect::<String>();
-                black_box(normalized);
-            }));
-            group.bench_function("rs", |b| b.iter(|| {
-                let normalized = StrNormalForm::nfd(black_box(orthographic.as_str())).collect::<String>();
-                black_box(normalized);
-            }));
-            group.finish();
-        }
+        // {
+        //     let mut group = c.benchmark_group("vi_orthographic_to_nfc_str");
+        //     group.throughput(Throughput::Bytes(orthographic.len() as u64));
+        //     group.bench_function("icu4x", |b| b.iter(|| {
+        //         let normalized = nfc_norm_icu4x.normalize(black_box(orthographic.as_str()));
+        //         black_box(normalized);
+        //     }));
+            // group.bench_function("unic", |b| b.iter(|| {
+            //     let normalized = StrNormalForm::nfc(black_box(orthographic.as_str())).collect::<String>();
+            //     black_box(normalized);
+            // }));
+            // group.bench_function("rs", |b| b.iter(|| {
+            //     let normalized = StrNormalForm::nfc(black_box(orthographic.as_str())).collect::<String>();
+            //     black_box(normalized);
+            // }));
+        //     group.finish();
+        // }
+    //     {
+    //         let mut group = c.benchmark_group("vi_orthographic_to_nfd_str");
+    //         group.throughput(Throughput::Bytes(orthographic.len() as u64));
+    //         group.bench_function("icu4x", |b| b.iter(|| {
+    //             let normalized = nfd_norm_icu4x.normalize(black_box(orthographic.as_str()));
+    //             black_box(normalized);
+    //         }));
+    //         group.bench_function("unic", |b| b.iter(|| {
+    //             let normalized = StrNormalForm::nfd(black_box(orthographic.as_str())).collect::<String>();
+    //             black_box(normalized);
+    //         }));
+    //         group.bench_function("rs", |b| b.iter(|| {
+    //             let normalized = StrNormalForm::nfd(black_box(orthographic.as_str())).collect::<String>();
+    //             black_box(normalized);
+    //         }));
+    //         group.finish();
+    //     }
 
         {
             let mut group = c.benchmark_group("vi_orthographic_to_nfc_utf16");
             group.throughput(Throughput::Elements(orthographic_utf16.len() as u64));
             group.bench_function("icu4x", |b| b.iter(|| {
-                let normalized = nfc_norm_icu4x.normalize_utf16(black_box(orthographic_utf16.as_slice()));
-                black_box(normalized);
+                icu4x_utf16.clear();
+                nfc_norm_icu4x.normalize_utf16_to(black_box(orthographic_utf16.as_slice()), &mut icu4x_utf16).unwrap();
+                black_box(&icu4x_utf16);
             }));
             group.bench_function("icu4c", |b| b.iter(|| {
-                let normalized = nfc_norm_icu4c.normalize_ustring(black_box(&orthographic_uchar)).unwrap();
-                black_box(normalized);
+                let len = nfc_norm_icu4c.normalize_to(black_box(orthographic_utf16.as_slice()), &mut icu4c_utf16).unwrap();
+                black_box(len);
             }));
             group.finish();
         }
-        {
-            let mut group = c.benchmark_group("vi_orthographic_to_nfd_utf16");
-            group.throughput(Throughput::Elements(orthographic_utf16.len() as u64));
-            group.bench_function("icu4x", |b| b.iter(|| {
-                let normalized = nfd_norm_icu4x.normalize_utf16(black_box(orthographic_utf16.as_slice()));
-                black_box(normalized);
-            }));
-            group.bench_function("icu4c", |b| b.iter(|| {
-                let normalized = nfd_norm_icu4c.normalize_ustring(black_box(&orthographic_uchar)).unwrap();
-                black_box(normalized);
-            }));
-            group.finish();
-        }
+    //     {
+    //         let mut group = c.benchmark_group("vi_orthographic_to_nfd_utf16");
+    //         group.throughput(Throughput::Elements(orthographic_utf16.len() as u64));
+    //         group.bench_function("icu4x", |b| b.iter(|| {
+    //             let normalized = nfd_norm_icu4x.normalize_utf16(black_box(orthographic_utf16.as_slice()));
+    //             black_box(normalized);
+    //         }));
+    //         group.bench_function("icu4c", |b| b.iter(|| {
+    //             let normalized = nfd_norm_icu4c.normalize_ustring(black_box(&orthographic_uchar)).unwrap();
+    //             black_box(normalized);
+    //         }));
+    //         group.finish();
+    //     }
     }
 }
 

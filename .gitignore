@@ -1,2 +1,4 @@
 /target
 /Cargo.lock
+/target-combined
+/target-separate-search-both
