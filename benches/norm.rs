@@ -18,12 +18,10 @@ fn slice_from_icu4c(string: &UChar) -> &[u16] {
 const UTF16_BUFFER_SIZE: usize = 200*1024;
 
 fn bench_lang(name: &str, data: &str, c: &mut Criterion) {
-    let data_provider = icu_testdata::get_provider();
-
-    let nfd_norm_icu4x = DecomposingNormalizer::try_new_nfd_unstable(&data_provider).unwrap();
-    let nfkd_norm_icu4x = DecomposingNormalizer::try_new_nfkd_unstable(&data_provider).unwrap();
-    let nfc_norm_icu4x = ComposingNormalizer::try_new_nfc_unstable(&data_provider).unwrap();
-    let nfkc_norm_icu4x = ComposingNormalizer::try_new_nfkc_unstable(&data_provider).unwrap();
+    let nfd_norm_icu4x = DecomposingNormalizer::new_nfd();
+    let nfkd_norm_icu4x = DecomposingNormalizer::new_nfkd();
+    let nfc_norm_icu4x = ComposingNormalizer::new_nfc();
+    let nfkc_norm_icu4x = ComposingNormalizer::new_nfkc();
 
     let nfd_icu4x = nfd_norm_icu4x.normalize(data);
     let nfkd_icu4x = nfkd_norm_icu4x.normalize(data);

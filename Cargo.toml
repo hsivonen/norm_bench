@@ -8,7 +8,6 @@ edition = "2021"
 [dependencies]
 
 [dev-dependencies]
-icu_testdata = { path = "../icu4x/provider/testdata" }
 icu_normalizer = { path = "../icu4x/components/normalizer", features = ["serde"] }
 rust_icu_ustring =  { path = "../rust_icu/rust_icu_ustring" }
 rust_icu_unorm2 = { path = "../rust_icu/rust_icu_unorm2" }
